@@ -91,36 +91,20 @@ for (i = 0; i < listDir.length; i++) {
 		open(dir + listDir[i]);
 		current_chB = getTitle();
 		current_chB = image2gray32bit(current_chB);
-		Gf1=Gf;
 		selectWindow(current_chB);
-		if (Ques=="Yes") {
-			run("Multiply...","value=" + Gf);
-			Gf1=1; 
+		if (List.get(Ques)=="Yes") {
+			run("Multiply...","value=" + List.get(Gf));
 		}
 		saveAs("tiff", List.get(disordered_images_Dir) + substring(current_chB,0,lengthOf(current_chB)-9) + "_chB_32bits");
 		close(); 
 	}
-}
-
-// TODO change so this can decide how to handle images if they are 16 bit vs 8 bits
-// GP and GPc Arrays 
-GP_8bit_array=newArray(256);
-for (i=0; i<256; i++) {
-	GP_8bit_array[i]=((i-127)/127); 
-}
-
-GPc_8bit_array=newArray(256);
-for (i=0; i<256; i++) {
-	GP_i = GP_8bit_array[i];
-	GPc_8bit_array[i]=-(1+GP_i+Gf1*GP_i-Gf1)/(-1-GP_i+Gf1*GP_i-Gf1); 
 }
 		
 // GP analysis
 listOrd = getFileList(List.get(ordered_images_Dir));
 listDisord = getFileList(List.get(disordered_images_Dir));
 
-//TODO: remove this hitoDir
-var histoDir=0;
+// process disordered ones
 for (h = 0, j = h; h < listDisord.length; h++, j++) {
 	// Name has the length of # of images
 	Names=newArray(listOrd.length);
@@ -154,14 +138,13 @@ for (h = 0, j = h; h < listDisord.length; h++, j++) {
 	rename(image_sum);
 	
 	// calculate ratio between difference and sum
-	GP_image_pre = "Image_preGP.tif";
+	GP_image_pre = Names[j] + "_preGP.tif";
 	imageCalculator("Divide create 32-bit", image_diff, image_sum);
 	setMinAndMax(-1.0000, 1.0000);
-	call("ij.ImagePlus.setDefault16bitRange", 0);
-	saveAs("tiff", List.get(rawGP_images_Dir) + Names[j] + "_preGP");
-	rename(GP_image_pre);
-	
-	
+	//call("ij.ImagePlus.setDefault16bitRange", 0);
+	run(List.get(lut1));
+	saveAs("tiff", List.get(rawGP_images_Dir) + GP_image_pre);
+	resetMinAndMax();
 	
 	selectImage(image_sum);
 	mask_im = "Image_1bit.tif";
@@ -176,22 +159,25 @@ for (h = 0, j = h; h < listDisord.length; h++, j++) {
 	run("Subtract...", "value=254");
 	run("glasbey_on_dark");
 	
+	GP_image_post = Names[j] + "_GP.tif";
 	imageCalculator("Multiply create 32-bit", mask_im, GP_image_pre);
 	run(List.get(lut1));
 	setMinAndMax(-1.0000, 1.0000);
-	saveAs("tiff", List.get(GP_images_Dir) + Names[j] + "_GP");
+	saveAs("tiff", List.get(GP_images_Dir) + GP_image_post);
 	resetMinAndMax();
-
-	exit("tadann!");
-// Histogram generation
-	histoDir=histogramGP_Dir;
-	HistogramGeneration();
+	
+	
+	// Histogram generation
+	histoDir=List.get(histogramGP_Dir);
+	HistogramGeneration(GP_image_post, histoDir);
 }
 
 // If there is not fluorescent immunostaining
+// TODO: this is where i stoped
 if (chC == "none") {
 // HSB image generation
 	if (HSB=="Yes") {
+		exit("continue here");
 		HSBgeneration();
 	}
 // Print information
@@ -286,7 +272,7 @@ function getUserInput() {
 	Dialog.create("GP analysis parameters");
 	Dialog.addChoice("Acquisition ordered channel:  ", CHANNEL2, "ch00");
 	Dialog.addChoice("Acquisition disordered channel:  ", CHANNEL2, "ch01");
-	Dialog.addNumber("Lower Threshold Value for GP the mask:  ", 15);
+	Dialog.addNumber("Lower Threshold Value for GP the mask:  ", 15000);
 	Dialog.addChoice("Scale color for GP images:  ", lut, "Rainbow RGB.lut");
 	Dialog.addMessage("\n");
 	Dialog.addChoice("Immunofluorescence channel:  ", CHANNEL1, "none");
@@ -412,41 +398,58 @@ function image2gray32bit(im_title) {
 	return im_title;
 }
 
-function HistogramGeneration () {
+function HistogramGeneration (im_title, histoDir) {
 // This funcion obtains the intensity frequency histogram of the images, makes it smoother,
 // calculates the normal average distribution and also includes the GP value (and GP value
 // corrected by the Gfactor) corresponding to each intensity. An MS Excel file is generated
 // with all this data
+	selectWindow(im_title);
+	tmp_name = substring(im_title, 0, im_title.length - 4);
 	
-	Int=newArray(256);
-	Cou=newArray(256);
-	Smo=newArray(256);
-	NAvDist=newArray(256);
-	nBins = 256;
+	nBins   = 256;
+	Int     = newArray(nBins);
+	Cou     = newArray(nBins);
+	Smo     = newArray(nBins);
+	NAvDist = newArray(nBins);
 
-	getHistogram(values, counts, nBins);
-	close();
-	while (nImages>0) {
-		selectImage(nImages);
-		close(); }
+	getHistogram(values, counts, nBins, -1, 1);
+	GP_array  = values;
+	GPc_array = newArray(nBins);
+	
+	if (List.get(Ques)=="Yes") {
+		Gf1 = List.get(Gf);
+	}else {
+		Gf1 = 1;
+	}
+		
+	for (i=0; i<nBins; i++) {
+		GP_i = GP_array[i];
+		GPc_array[i]=-(1+GP_i+Gf1*GP_i-Gf1)/(-1-GP_i+Gf1*GP_i-Gf1); 
+	}
+	
+	close("*");
 
+	// rolling average over 3
 	for (u=0; u<nBins; u++) {
 		Int[u]=u;
 		Cou[u]=counts[u];
-		if (u<=1) {
-			Smo[u]=0; }
-		else if (u==255) {
-			Smo[u]=0; }
-		else {
-			Smo[u]=(counts[u-1]+counts[u]+counts[u+1])/3;}
+		if (u==0) {
+			Smo[u]=counts[u]; 
+		}else if (u==255) {
+			Smo[u]=counts[u];
+		}else {
+			Smo[u]=(counts[u-1]+counts[u]+counts[u+1])/3;
+		}
 	}
+	
+	
 	Array.getStatistics(Cou,min,max,mean,stdDev);
 	Sa=(mean*256)-counts[0]-counts[255];
-	d=File.open(histoDir + Name[j]+"_Histogram.xls");
+	d=File.open(histoDir + tmp_name+"_Histogram.xls");
 	print(d, "Intensity	Counts	Smooth	Norm Av Dist	GP	GP corrected");
 	for (k=0; k<256; k++) {
 		NAvDist[k]=100*Smo[k]/Sa;
-		print(d, Int[k]+"	"+Cou[k]+"	"+Smo[k]+"	"+NAvDist[k]+"	"+GP[k]+"	"+GPc[k]);
+		print(d, Int[k]+"	"+Cou[k]+"	"+Smo[k]+"	"+NAvDist[k]+"	"+GP_array[k]+"	"+GPc_array[k]);
 	}
 	File.close(d);
 }
