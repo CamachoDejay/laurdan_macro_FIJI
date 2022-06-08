@@ -100,53 +100,89 @@ for (i = 0; i < listDir.length; i++) {
 		saveAs("tiff", List.get(disordered_images_Dir) + substring(current_chB,0,lengthOf(current_chB)-9) + "_chB_32bits");
 		close(); 
 	}
-	exit();
 }
-exit("ok")
 
 // TODO change so this can decide how to handle images if they are 16 bit vs 8 bits
 // GP and GPc Arrays 
-GP=newArray(256);
+GP_8bit_array=newArray(256);
 for (i=0; i<256; i++) {
-	GP[i]=((i-127)/127); }
+	GP_8bit_array[i]=((i-127)/127); 
+}
 
-GPc=newArray(256);
+GPc_8bit_array=newArray(256);
 for (i=0; i<256; i++) {
-	GPc[i]=-(1+GP[i]+Gf1*GP[i]-Gf1)/(-1-GP[i]+Gf1*GP[i]-Gf1); }
+	GP_i = GP_8bit_array[i];
+	GPc_8bit_array[i]=-(1+GP_i+Gf1*GP_i-Gf1)/(-1-GP_i+Gf1*GP_i-Gf1); 
+}
 		
 // GP analysis
-listOrd = getFileList(ordered_images_Dir);
-listDisord = getFileList(disordered_images_Dir);
+listOrd = getFileList(List.get(ordered_images_Dir));
+listDisord = getFileList(List.get(disordered_images_Dir));
 
+//TODO: remove this hitoDir
 var histoDir=0;
 for (h = 0, j = h; h < listDisord.length; h++, j++) {
-	Name=newArray(listOrd.length);
-	open(ordered_images_Dir+listOrd[h]);
+	// Name has the length of # of images
+	Names=newArray(listOrd.length);
+	
+	// open an ordered image, and store the value in the array
+	open(List.get(ordered_images_Dir)+listOrd[h]);
 	name = getTitle;
-	Name[j] = substring(name,0,lengthOf(name)-15);
-	rename("Image_1a.tif");
-	run("Duplicate...","title=Image_1b.tif");
-	open(disordered_images_Dir+listDisord[j]);
-	rename("Image_2a.tif");
-	run("Duplicate...","title=Image_2b.tif");
-	imageCalculator("Substract create 32-bit", "Image_1a.tif", "Image_2a.tif");
-	rename("Image_Subs.tif");
-	imageCalculator("Add create 32-bit", "Image_1b.tif", "Image_2b.tif");
-	rename("Image_Add.tif");
-	imageCalculator("Divide create 32-bit", "Image_Subs.tif", "Image_Add.tif");
-	saveAs("tiff", rawGP_images_Dir + Name[j] + "_preGP");
-	rename("Image_preGP.tif");
+	Names[j] = substring(name,0,lengthOf(name)-15);
+	
+	image_1a = "Image_1a.tif";
+	rename(image_1a);
+	
+	image_1b = "Image_1b.tif";
+	run("Duplicate...","title=" + image_1b);
+	
+	// open a disordered image
+	open(List.get(disordered_images_Dir)+listDisord[j]);
+	image_2a = "Image_2a.tif"; 
+	rename(image_2a);
+	
+	image_2b = "Image_2b.tif";
+	run("Duplicate...","title=" + image_2b);
+	
+	// calculate difference and sum
+	image_diff = "Image_Subs.tif";
+	imageCalculator("Substract create 32-bit", image_1a, image_2a);
+	rename(image_diff);
+	
+	image_sum = "Image_Add.tif";
+	imageCalculator("Add create 32-bit", image_1b, image_2b);
+	rename(image_sum);
+	
+	// calculate ratio between difference and sum
+	GP_image_pre = "Image_preGP.tif";
+	imageCalculator("Divide create 32-bit", image_diff, image_sum);
 	setMinAndMax(-1.0000, 1.0000);
 	call("ij.ImagePlus.setDefault16bitRange", 0);
-	selectImage("Image_Add.tif");
-	setThreshold(t*2,510);
+	saveAs("tiff", List.get(rawGP_images_Dir) + Names[j] + "_preGP");
+	rename(GP_image_pre);
+	
+	
+	
+	selectImage(image_sum);
+	mask_im = "Image_1bit.tif";
+	run("Duplicate...", "title=" + mask_im);
+	th_value = parseFloat(List.get(t));
+	print("the th value is: " + th_value);
+	// here the x2 is due to the fact that the mask is defined in the sum image
+	setThreshold(th_value*2, 1000000000000000000000000000000.0000);
+	setOption("BlackBackground", false);
 	run("Convert to Mask");
+	
 	run("Subtract...", "value=254");
-	rename("Image_1bit.tif");
-	imageCalculator("Multiply create", "Image_1bit.tif", "Image_preGP.tif");
-	run(lut1);
-	saveAs("tiff", GP_images_Dir + Name[j] + "_GP");
+	run("glasbey_on_dark");
+	
+	imageCalculator("Multiply create 32-bit", mask_im, GP_image_pre);
+	run(List.get(lut1));
+	setMinAndMax(-1.0000, 1.0000);
+	saveAs("tiff", List.get(GP_images_Dir) + Names[j] + "_GP");
+	resetMinAndMax();
 
+	exit("tadann!");
 // Histogram generation
 	histoDir=histogramGP_Dir;
 	HistogramGeneration();
