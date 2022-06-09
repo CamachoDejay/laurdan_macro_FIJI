@@ -187,6 +187,8 @@ if (List.get(chC) == "none") {
 	printInfo();
 }
 
+//TODO: finish this part
+exit("here we go");
 // If there is fluorescent immunostaining
 else {
 // Folder management
@@ -251,7 +253,7 @@ else {
 	}
 
 // Print information
-	listGP = getFileList(GP_images_Dir);
+	listGP = getFileList(List.get(GP_images_Dir));
 	time2 = getTime();
 	TOTALtime = (time2-time0)/1000;
 	printInfo();
@@ -259,6 +261,9 @@ else {
 
 
 ///////////////// FUNCTIONS ////////////////////
+
+
+
 function getUserInput() { 
 // get user input and store the values in the List
 	// Inicialize choice variables
@@ -467,8 +472,8 @@ function HSBgeneration() {
 	QUESTION = newArray("Yes","No");
 
 	//TODO: move this path to the list
-	HSB_Dir = List.get(results_Dir) + "HSB images" + File.separator;
-	Folder = HSB_Dir;
+	//HSB_Dir = List.get(results_Dir) + "HSB images" + File.separator;
+	Folder = List.get(HSB_Dir);
 	newCleanFolder(Folder);
 
 	Lut_Dir = getDirectory("luts");
@@ -476,10 +481,12 @@ function HSBgeneration() {
 
 	Dialog.create("Choose images and LUT");
 	Dialog.addChoice("Select Hue (GP) image: ", listRAW, "none");
-	if (chC == "none") {
-		Dialog.addChoice("Brightness folder: ", BRIGHTNESSnoIF, "Order channel");}
+	if (List.get(chC) == "none") {
+		Dialog.addChoice("Brightness folder: ", BRIGHTNESSnoIF, "Order channel");
+	}
 	else {
-		Dialog.addChoice("Brightness folder: ", BRIGHTNESS, "Order channel");}
+		Dialog.addChoice("Brightness folder: ", BRIGHTNESS, "Order channel");
+	}
 	Dialog.addMessage("\n");
 	Dialog.addChoice("Select color LUT: ",lut, "Rainbow RGB.lut");
 	Dialog.addMessage("\n");
@@ -509,15 +516,6 @@ function HSBgeneration() {
 	index2 = indexOf(Lut,".lut");
 	L = substring(Lut,0,index2);
 
-	//open(List.get(rawGP_images_Dir)+H);
-	
-	Name = getSingleHSB(List.get(rawGP_images_Dir)+H, L, brightness_Dir);
-	selectWindow(Name);
-	saveAs("tiff", HSB_Dir + Name + "_HSB");
-	closeAllImages();
-	
-	
-
 // HSB whole folder processing
 	if (WholeDir == "Yes") {
 		for (j = 0; j < listRAW.length; j++) {
@@ -527,44 +525,20 @@ function HSBgeneration() {
 			saveAs("tiff", HSB_Dir + Name + "_HSB");
 			closeAllImages();
 		}
+	}else {
+		Name = getSingleHSB(List.get(rawGP_images_Dir)+H, L, brightness_Dir);
+		selectWindow(Name);
+		saveAs("tiff", HSB_Dir + Name + "_HSB");
+		closeAllImages();
 	}
 	
-	exit("error message");
+
 
 // Make HSB LUT bar
-	newImage("Hue", "8-bit Ramp", 256, 256, 1);
-	run(L);
-	run("Duplicate...", "title=Brightness");
-	run("Rotate 90 Degrees Left");
-	run("32-bit");
-	selectWindow("Hue");
-	run("RGB Color");
-	run("Split Channels");
-	imageCalculator("Multiply create 32-bit", "Brightness","Hue (red)");
-	rename("bR");
-	run("8-bit");
-	imageCalculator("Multiply create 32-bit", "Brightness","Hue (green)");
-	rename("bG");
-	run("8-bit");
-	imageCalculator("Multiply create 32-bit", "Brightness","Hue (blue)");
-	rename("bB");
-	run("8-bit");
-	run("Merge Channels...", "red=bR green=bG blue=bB gray=*None*");
-	rename("HSB LUT");
-	selectWindow("Hue (red)");
-	close();
-	selectWindow("Hue (green)");
-	close();
-	selectWindow("Hue (blue)");
-	close();
-	selectWindow("Brightness");
-	close();
+	HSB_lut = HSB_LUTbar(L);
 
-	selectWindow("HSB LUT");
-	run("Rotate 90 Degrees Left");
-	run("Size...", "width=32 height=256 interpolation=None");
-
-
+// This part makes little sense because each image had its own min and max value
+/*
 // Copy LUT bar to the image
 	run("Copy");
 	newImage("Panel LUT", "RGB White", 70, 264, 1);
@@ -589,7 +563,49 @@ function HSBgeneration() {
 		saveAs("tiff", HSB_Dir + Name + "_Lut bar");
 		open(HSB_Dir + Name + "_HSB.tif");
 	}
+	*/
 	closeAllImages();
+}
+
+function HSB_LUTbar(L) { 
+// make LUT bar
+	setBatchMode(true);
+	newImage("Hue", "8-bit Ramp", 256, 256, 1);
+	run(L);
+	run("Duplicate...", "title=Brightness");
+	run("Rotate 90 Degrees Left");
+	
+	selectWindow("Hue");
+	run("RGB Color");
+	run("Split Channels");
+	
+	imageCalculator("Multiply create 32-bit", "Brightness","Hue (red)");
+	rename("bR");
+	
+	imageCalculator("Multiply create 32-bit", "Brightness","Hue (green)");
+	rename("bG");
+	
+	imageCalculator("Multiply create 32-bit", "Brightness","Hue (blue)");
+	rename("bB");
+	
+	run("Merge Channels...", "red=bR green=bG blue=bB gray=*None*");
+	rename("HSB LUT");
+	selectWindow("Hue (red)");
+	close();
+	selectWindow("Hue (green)");
+	close();
+	selectWindow("Hue (blue)");
+	close();
+	selectWindow("Brightness");
+	close();
+
+	selectWindow("HSB LUT");
+	run("Rotate 90 Degrees Left");
+	run("Size...", "width=32 height=256 interpolation=None");
+
+	setBatchMode(false);
+	return "HSB LUT";
+
 }
 
 function getSingleHSB(path2image, L, brightness_Dir) { 
@@ -669,34 +685,36 @@ function getSingleHSB(path2image, L, brightness_Dir) {
 
 }
 
-function printInfo () {					// This function prints and saves a summary of the results of the macro
+function printInfo() {					// This function prints and saves a summary of the results of the macro
 	print("\\Clear");
 	print("GP images analysis macro");
 	print("   Quantitative Imaging of Membrane Lipid Order in Cells and Organisms");
 	print("   Dylan M. Owen, Carles Rentero, Astrid Magenau, Ahmed Abu-Siniyeh and Katharina Gaus");
 	print("   Nature Protocols 2011");
-	print("   version July 2011");
+	print("   Initial version July 2011");
+	print("   Modified by Rafael Camacho, Centre for Cellular Imaging, GU, Sweden");
+	print("   Updated on Jun 2022")
 	print("\n");
-	print("Ordered channel: " + chA);
-	print("Disordered channel: " + chB);
-	print("   Lower threshold value: " + t);
+	print("Ordered channel: " + List.get(chA));
+	print("Disordered channel: " + List.get(chB));
+	print("   Lower threshold value: " + List.get(t));
 	if (chC != "none") {
-		print("Channel IF: " + chC);
-		print("   Lower threshold value IF mask: " + tc); }
+		print("Channel IF: " + List.get(chC));
+		print("   Lower threshold value IF mask: " + List.get(tc)); }
 	print("");
 	print("GP images (" + (listGP.length-1) + ") saved at:");
-	print("  " + GP_images_Dir);
-	print("G factor: " + Gf);
-	print("Scale color for GP images: " + lut1);
+	print("  " + List.get(GP_images_Dir));
+	print("G factor: " + List.get(Gf));
+	print("Scale color for GP images: " + List.get(lut1));
 	print("");
-	if (chC != "none") {
+	if (List.get(chC) != "none") {
 		listGP2 = getFileList(GP_IF_images_Dir);
 		print("GP-IF images (" + (listGP2.length-1) + ") saved at:");
 		print("  " + GP_IF_images_Dir);
 		print(""); }
-	if (HSB=="Yes") {
+	if (List.get(HSB)=="Yes") {
 		print("HSB images saved at:");
-		print("  " + HSB_Dir);
+		print("  " + List.get(HSB_Dir));
 		print("");
 	}
 	print("");
