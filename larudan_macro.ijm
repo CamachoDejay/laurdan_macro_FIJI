@@ -117,16 +117,16 @@ for (h = 0, j = h; h < listDisord.length; h++, j++) {
 	image_1a = "Image_1a.tif";
 	rename(image_1a);
 	
-	image_1b = "Image_1b.tif";
-	run("Duplicate...","title=" + image_1b);
+	//image_1b = "Image_1b.tif";
+	//run("Duplicate...","title=" + image_1b);
 	
 	// open a disordered image
 	open(List.get(disordered_images_Dir)+listDisord[j]);
 	image_2a = "Image_2a.tif"; 
 	rename(image_2a);
 	
-	image_2b = "Image_2b.tif";
-	run("Duplicate...","title=" + image_2b);
+	//image_2b = "Image_2b.tif";
+	//run("Duplicate...","title=" + image_2b);
 	
 	// calculate difference and sum
 	image_diff = "Image_Subs.tif";
@@ -134,7 +134,7 @@ for (h = 0, j = h; h < listDisord.length; h++, j++) {
 	rename(image_diff);
 	
 	image_sum = "Image_Add.tif";
-	imageCalculator("Add create 32-bit", image_1b, image_2b);
+	imageCalculator("Add create 32-bit", image_1a, image_2a);
 	rename(image_sum);
 	
 	// calculate ratio between difference and sum
@@ -174,14 +174,14 @@ for (h = 0, j = h; h < listDisord.length; h++, j++) {
 
 // If there is not fluorescent immunostaining
 // TODO: this is where i stoped
-if (chC == "none") {
+if (List.get(chC) == "none") {
 // HSB image generation
-	if (HSB=="Yes") {
-		exit("continue here");
+	if (List.get(HSB)=="Yes") {
+		
 		HSBgeneration();
 	}
 // Print information
-	listGP = getFileList(GP_images_Dir);
+	listGP = getFileList(List.get(GP_images_Dir));
 	time1 = getTime();
 	TOTALtime = (time1-time0)/1000;
 	printInfo();
@@ -194,7 +194,7 @@ else {
 
 	temp_IFmask_Dir = temp_Dir + "IF mask" + File.separator;
 	Folder = temp_IFmask_Dir;
-	newCleanFolder(Folder_path);
+	newCleanFolder(Folder);
 
 	File.makeDirectory(IF_images_Dir);
 	File.makeDirectory(GP_IF_images_Dir);
@@ -454,19 +454,22 @@ function HistogramGeneration (im_title, histoDir) {
 	File.close(d);
 }
 
-function HSBgeneration() {				// This function generates the HSB image of the GP images as explained in the paper
+function HSBgeneration() {				
+	// This function generates the HSB image of the GP images as explained in the paper
 	closeAllImages();
 	setBatchMode(false);
 
-// Select images folder
-	listRAW = getFileList(rawGP_images_Dir);
+	// Select images folder
+	listRAW = getFileList(List.get(rawGP_images_Dir));
 	
 	BRIGHTNESS = newArray("Order channel","Disorder channel","IF channel");
 	BRIGHTNESSnoIF = newArray("Order channel","Disorder channel");
+	QUESTION = newArray("Yes","No");
 
-	HSB_Dir = results_Dir + "HSB images" + File.separator;
+	//TODO: move this path to the list
+	HSB_Dir = List.get(results_Dir) + "HSB images" + File.separator;
 	Folder = HSB_Dir;
-	newCleanFolder(Folder_path);
+	newCleanFolder(Folder);
 
 	Lut_Dir = getDirectory("luts");
 	lut = getFileList(Lut_Dir);
@@ -491,93 +494,42 @@ function HSBgeneration() {				// This function generates the HSB image of the GP
 
 	if (BRIGHT=="Order channel") {
 		mark = "_chA_32bits.tif";
-		brightness_Dir = results_Dir + "Ordered Images" + File.separator;
+		brightness_Dir = List.get(results_Dir) + "Ordered Images" + File.separator;
 	}
 	else if (BRIGHT=="Disorder channel") {
 		mark = "_chB_32bits.tif";
-		brightness_Dir = results_Dir + "Disordered Images" + File.separator;
+		brightness_Dir = List.get(results_Dir) + "Disordered Images" + File.separator;
 	}
 	else {
 		mark = "_IF_32bits.tif";
-		brightness_Dir = results_Dir + "Immunofluorescence Images" + File.separator;
+		brightness_Dir = List.get(results_Dir) + "Immunofluorescence Images" + File.separator;
 	}
-
+	
 	run("Set Measurements...", "  min limit display redirect=None decimal=5");
-	index2=indexOf(Lut,".lut");
-	L=substring(Lut,0,index2);
+	index2 = indexOf(Lut,".lut");
+	L = substring(Lut,0,index2);
 
-	open(rawGP_images_Dir+H);
-	name=getTitle();
-	Name=substring(name,0,lengthOf(name)-10);
-	run(L);
-	rename("Hue");
-
-	run("Brightness/Contrast...");
-	waitForUser("set min & max","set min & max");
-	getMinAndMax(min,max);
-	time0 = getTime();
-
-	open(brightness_Dir+Name+mark);
-	Bri=getTitle();
-	run("Enhance Contrast", "saturated=0.5 normalize");
-
-	selectWindow("Hue");
-	run("RGB Color");
-	run("Split Channels");
-
-	imageCalculator("Multiply create 32-bit", Bri,"Hue (red)");
-	rename("bR");
-	run("8-bit");
-
-	imageCalculator("Multiply create 32-bit", Bri,"Hue (green)");
-	rename("bG");
-	run("8-bit");
-
-	imageCalculator("Multiply create 32-bit", Bri,"Hue (blue)");
-	rename("bB");
-	run("8-bit");
-
-	run("Merge Channels...", "red=bR green=bG blue=bB gray=*None*");
+	//open(List.get(rawGP_images_Dir)+H);
+	
+	Name = getSingleHSB(List.get(rawGP_images_Dir)+H, L, brightness_Dir);
+	selectWindow(Name);
 	saveAs("tiff", HSB_Dir + Name + "_HSB");
-
 	closeAllImages();
+	
+	
 
 // HSB whole folder processing
 	if (WholeDir == "Yes") {
 		for (j = 0; j < listRAW.length; j++) {
-			open(rawGP_images_Dir+listRAW[j]);
-			name1=getTitle();
-			Name1=substring(name1,0,lengthOf(name1)-10);
-			rename("Hue");
-			run(L);
-			setMinAndMax(min,max);
-
-			open(brightness_Dir+Name1+mark);
-			run("Enhance Contrast", "saturated=0.5 normalize");
-			Bri=getTitle;
-
-			selectWindow("Hue");
-			run("RGB Color");
-			run("Split Channels");
-
-			imageCalculator("Multiply create 32-bit", Bri,"Hue (red)");
-			rename("bR");
-			run("8-bit");
-
-			imageCalculator("Multiply create 32-bit", Bri,"Hue (green)");
-			rename("bG");
-			run("8-bit");
-
-			imageCalculator("Multiply create 32-bit", Bri,"Hue (blue)");
-			rename("bB");
-			run("8-bit");
-
-			run("Merge Channels...", "red=bR green=bG blue=bB gray=*None*");
-			saveAs("tiff", HSB_Dir + Name1 + "_HSB");
-
+			//open(rawGP_images_Dir+listRAW[j]);
+			Name = getSingleHSB(List.get(rawGP_images_Dir)+listRAW[j], L, brightness_Dir);
+			selectWindow(Name);
+			saveAs("tiff", HSB_Dir + Name + "_HSB");
 			closeAllImages();
 		}
 	}
+	
+	exit("error message");
 
 // Make HSB LUT bar
 	newImage("Hue", "8-bit Ramp", 256, 256, 1);
@@ -638,6 +590,83 @@ function HSBgeneration() {				// This function generates the HSB image of the GP
 		open(HSB_Dir + Name + "_HSB.tif");
 	}
 	closeAllImages();
+}
+
+function getSingleHSB(path2image, L, brightness_Dir) { 
+// hadeling single image for HSB
+	open(path2image);
+	
+	name = getTitle();
+	Name = substring(name,0,lengthOf(name)-10);
+	run(L);
+	rename("Hue");
+	resetMinAndMax();
+	//run("Brightness/Contrast...");
+	//waitForUser("set min & max","set min & max");
+	getMinAndMax(min,max);
+	
+	time0 = getTime();
+
+	open(brightness_Dir+Name+mark);
+	Bri=getTitle();
+	//run("Enhance Contrast", "saturated=0.5 normalize");
+	resetMinAndMax();
+
+	selectWindow("Hue");
+	run("RGB Color");
+	run("Split Channels");
+
+	min_global = 0;
+	max_global = 0;
+	imageCalculator("Multiply create 32-bit", Bri,"Hue (red)");
+	rename("bR");
+	resetMinAndMax();
+	getMinAndMax(min, max);
+	if (min<min_global) {
+		min_global = min;
+	}
+	if (max>max_global) {
+		max_global = max;
+	}
+	//run("8-bit");
+
+	imageCalculator("Multiply create 32-bit", Bri,"Hue (green)");
+	rename("bG");
+	resetMinAndMax();
+	getMinAndMax(min, max);
+	if (min<min_global) {
+		min_global = min;
+	}
+	if (max>max_global) {
+		max_global = max;
+	}
+	//run("8-bit")/;
+
+	imageCalculator("Multiply create 32-bit", Bri,"Hue (blue)");
+	rename("bB");
+	resetMinAndMax();
+	getMinAndMax(min, max);
+	if (min<min_global) {
+		min_global = min;
+	}
+	if (max>max_global) {
+		max_global = max;
+	}
+	//run("8-bit");
+
+	selectWindow("bR");
+	setMinAndMax(min_global, max_global);
+	selectWindow("bG");
+	setMinAndMax(min_global, max_global);
+	selectWindow("bB");
+	setMinAndMax(min_global, max_global);
+	
+	run("Merge Channels...", "c1=bR c2=bG c3=bB create");
+    run("RGB Color");
+	rename(Name);
+	
+	return Name;
+
 }
 
 function printInfo () {					// This function prints and saves a summary of the results of the macro
