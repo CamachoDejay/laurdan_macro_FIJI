@@ -2,7 +2,9 @@
    Quantitative Imaging of Membrane Lipid Order in Cells and Organisms
    Dylan M. Owen, Carles Rentero, Astrid Magenau, Ahmed Abu-Siniyeh and Katharina Gaus
    Nature Protocols 2011
-   version July 2011
+   Original version July 2011
+   This macro has been modiffied by R. Camacho. [CCI Gothenburg]
+   Current version June 2022, github: camachodejay
 */
 
 /* This macro calculates GP images from Laurdan and di-4-ANEPPDHQ ratiometric images in
@@ -10,12 +12,16 @@
    of HSB images of these GP images has been also implemented.
 */
 
+// house keeping
 print("\\Clear");
+close("*");
+run("Clear Results");
+roiManager("reset");
 // This makes sure we do not scale images while doing conversions
 run("Conversions...", " ");
-
 // to make ife easier I will be handeling general information in a List:
 List.clear();
+// Keys used in the list 
 // DATE and TIME
 month_name = "month_name";
 day_name = "day_name";
@@ -24,7 +30,6 @@ minute_str = "minute_str";
 month_id_str = "month_id_str"; // numner of the month formated as string
 dayOfMonth_str = "dayOfMonth_str";
 year_str = "year_str ";
-
 // USER INPUT
 chA = "chA";
 chB = "chB";
@@ -36,7 +41,6 @@ Gf = "Gf";
 Ques = "Ques";
 HSB = "HSB";
 lut1 = "lut1";
-
 // folders
 results_Dir = "results_Dir";
 ordered_images_Dir = "ordered_images_Dir";
@@ -49,14 +53,14 @@ GP_IF_images_Dir = "GP_IF_images_Dir";
 histogramIF_Dir = "histogramIF_Dir";
 HSB_Dir = "HSB_Dir";
 
-//requires("1.44d");
+// for historical reasons, TODO: check and remove
 closeAllImages();
 
 // Select images folder
 dir = getDirectory("Choose a Directory ");
 
-// TODO: change this into a function, this just gets input from the user
-// and I want to store this into the list.
+
+// get user input and store it into the list.
 getUserInput();
 
 time0 = getTime();
@@ -65,7 +69,6 @@ setBatchMode(false);
 
 // Here we store in our list the formated strings from date and time
 timeDate2List();
-
 
 // create output directory
 // step one get the paths on the List based on date time info
@@ -76,6 +79,7 @@ createOutputFolders();
 // Open and save images in 32bit format 
 listDir = getFileList(dir);
 //var s = 0;
+counter = 0;
 for (i = 0; i < listDir.length; i++) {
 	
 	if (endsWith(listDir[i], List.get(chA)+".tif")) {
@@ -84,7 +88,8 @@ for (i = 0; i < listDir.length; i++) {
 		current_chA = image2gray32bit(current_chA);
 		selectWindow(current_chA);
 		saveAs("tiff", List.get(ordered_images_Dir) + substring(current_chA,0,lengthOf(current_chA)-9) + "_chA_32bits");
-		close(); 
+		close();
+		counter++; 
 		}
 		
 	if (endsWith(listDir[i], List.get(chB)+".tif")) {
@@ -96,10 +101,14 @@ for (i = 0; i < listDir.length; i++) {
 			run("Multiply...","value=" + List.get(Gf));
 		}
 		saveAs("tiff", List.get(disordered_images_Dir) + substring(current_chB,0,lengthOf(current_chB)-9) + "_chB_32bits");
-		close(); 
+		close();
+		counter++; 
 	}
 }
-		
+
+if (counter == 0) {
+	exit("Error in file inputs, please check that they are tif, and have the proper naming convention");
+}
 // GP analysis
 listOrd = getFileList(List.get(ordered_images_Dir));
 listDisord = getFileList(List.get(disordered_images_Dir));
@@ -109,7 +118,7 @@ for (h = 0, j = h; h < listDisord.length; h++, j++) {
 	// Name has the length of # of images
 	Names=newArray(listOrd.length);
 	
-	// open an ordered image, and store the value in the array
+	// open an ordered image, and store the name in the array
 	open(List.get(ordered_images_Dir)+listOrd[h]);
 	name = getTitle;
 	Names[j] = substring(name,0,lengthOf(name)-15);
@@ -117,16 +126,10 @@ for (h = 0, j = h; h < listDisord.length; h++, j++) {
 	image_1a = "Image_1a.tif";
 	rename(image_1a);
 	
-	//image_1b = "Image_1b.tif";
-	//run("Duplicate...","title=" + image_1b);
-	
 	// open a disordered image
 	open(List.get(disordered_images_Dir)+listDisord[j]);
 	image_2a = "Image_2a.tif"; 
 	rename(image_2a);
-	
-	//image_2b = "Image_2b.tif";
-	//run("Duplicate...","title=" + image_2b);
 	
 	// calculate difference and sum
 	image_diff = "Image_Subs.tif";
@@ -146,6 +149,7 @@ for (h = 0, j = h; h < listDisord.length; h++, j++) {
 	saveAs("tiff", List.get(rawGP_images_Dir) + GP_image_pre);
 	resetMinAndMax();
 	
+	// Make intensity threshold based on sum image and user defined inpu
 	selectImage(image_sum);
 	mask_im = "Image_1bit.tif";
 	run("Duplicate...", "title=" + mask_im);
@@ -155,7 +159,7 @@ for (h = 0, j = h; h < listDisord.length; h++, j++) {
 	setThreshold(th_value*2, 1000000000000000000000000000000.0000);
 	setOption("BlackBackground", false);
 	run("Convert to Mask");
-	
+	// Cahnge to be either 0 or 1
 	run("Subtract...", "value=254");
 	run("glasbey_on_dark");
 	
@@ -166,14 +170,12 @@ for (h = 0, j = h; h < listDisord.length; h++, j++) {
 	saveAs("tiff", List.get(GP_images_Dir) + GP_image_post);
 	resetMinAndMax();
 	
-	
 	// Histogram generation
 	histoDir=List.get(histogramGP_Dir);
 	HistogramGeneration(GP_image_post, histoDir);
 }
 
 // If there is not fluorescent immunostaining
-// TODO: this is where i stoped
 if (List.get(chC) == "none") {
 // HSB image generation
 	if (List.get(HSB)=="Yes") {
@@ -188,7 +190,7 @@ if (List.get(chC) == "none") {
 }
 
 //TODO: finish this part
-exit("here we go");
+
 // If there is fluorescent immunostaining
 else {
 // Folder management
@@ -198,28 +200,36 @@ else {
 	Folder = temp_IFmask_Dir;
 	newCleanFolder(Folder);
 
-	File.makeDirectory(IF_images_Dir);
-	File.makeDirectory(GP_IF_images_Dir);
-	File.makeDirectory(histogramIF_Dir);
+	File.makeDirectory(List.get(IF_images_Dir));
+	File.makeDirectory(List.get(GP_IF_images_Dir));
+	File.makeDirectory(List.get(histogramIF_Dir));
 
 // Create a 1-bit mask from Immunofluorescence image and save for each image
 	listDir = getFileList(dir);
 	Name=newArray(listDir.length);
+	counter = 0;
 	for (i = 0; i < listDir.length; i++) {
 		if (endsWith(listDir[i], chC + ".tif")) {
 			open(dir + listDir[i]);
 			name = getTitle;
 			Name[i]=substring(name,0,lengthOf(name)-9);
 			run("32-bit");
-			saveAs("tiff",IF_images_Dir + Name[i] + "_IF_32bits");
-			run("8-bit");
-			setThreshold(tc,255);
+			saveAs("tiff",List.get(IF_images_Dir) + Name[i] + "_IF_32bits");
+			//run("8-bit");
+			setThreshold(List.get(tc),1000000000000000000000000000000.0000);
 			run("Convert to Mask");
 			run("Divide...","value=255");
 			saveAs("tiff", temp_IFmask_Dir + Name[i] + "_GP-IF_1bit");
 			close();
+			counter++;
 		}
 	}
+	
+	if (counter==0) {
+		exit("could not find IF images, check naming convention");
+	}
+	
+	exit("here we go");
 
 // GP-IF image
 	listTempIF = getFileList(temp_IFmask_Dir);
@@ -693,7 +703,7 @@ function printInfo() {					// This function prints and saves a summary of the re
 	print("   Nature Protocols 2011");
 	print("   Initial version July 2011");
 	print("   Modified by Rafael Camacho, Centre for Cellular Imaging, GU, Sweden");
-	print("   Updated on Jun 2022")
+	print("   Updated on Jun 2022");
 	print("\n");
 	print("Ordered channel: " + List.get(chA));
 	print("Disordered channel: " + List.get(chB));
