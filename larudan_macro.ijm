@@ -177,10 +177,12 @@ for (h = 0, j = h; h < listDisord.length; h++, j++) {
 
 // If there is not fluorescent immunostaining
 if (List.get(chC) == "none") {
+
 // HSB image generation
 	if (List.get(HSB)=="Yes") {
 		
 		HSBgeneration();
+		
 	}
 // Print information
 	listGP = getFileList(List.get(GP_images_Dir));
@@ -228,7 +230,7 @@ else {
 	if (counter==0) {
 		exit("could not find IF images, check naming convention");
 	}
-	
+	//TODO: finish this part
 	exit("here we go");
 
 // GP-IF image
@@ -532,13 +534,14 @@ function HSBgeneration() {
 			//open(rawGP_images_Dir+listRAW[j]);
 			Name = getSingleHSB(List.get(rawGP_images_Dir)+listRAW[j], L, brightness_Dir);
 			selectWindow(Name);
-			saveAs("tiff", HSB_Dir + Name + "_HSB");
+			print("where do I save: " + List.get(HSB_Dir) + Name + "_HSB");
+			saveAs("tiff", List.get(HSB_Dir) + Name + "_HSB");
 			closeAllImages();
 		}
 	}else {
 		Name = getSingleHSB(List.get(rawGP_images_Dir)+H, L, brightness_Dir);
 		selectWindow(Name);
-		saveAs("tiff", HSB_Dir + Name + "_HSB");
+		saveAs("tiff", List.get(HSB_Dir) + Name + "_HSB");
 		closeAllImages();
 	}
 	
