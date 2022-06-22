@@ -7,3 +7,7 @@ Current version June 2022, github: camachodejay
 ## Contributions
 
 This macro has been updated to support the work of [Prof. M. Pilon](https://www.gu.se/en/about/find-staff/marcpilon) at the Department of Chemistry & Molecular Biology of Gothenburg University. The experimental work was done by Mario Ruiz.
+
+### Test users
+
+Special thanks to Mario and Diego Sanchez - Instituto de Biología y Genética Molecular (IBGM) - for testing the macro and for discussions.
