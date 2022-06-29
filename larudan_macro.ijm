@@ -299,8 +299,8 @@ function getUserInput() {
 	Dialog.addNumber("Lower Threshold Value for GP the mask:  ", 15000);
 	Dialog.addChoice("Scale color for GP images:  ", lut, "Rainbow RGB.lut");
 	Dialog.addMessage("\n");
-	//Dialog.addChoice("Immunofluorescence channel:  ", CHANNEL1, "none");
-	Dialog.addChoice("Immunofluorescence channel:  ", CHANNEL1, "ch03");
+	Dialog.addChoice("Immunofluorescence channel:  ", CHANNEL1, "none");
+	//Dialog.addChoice("Immunofluorescence channel:  ", CHANNEL1, "ch03");
 	Dialog.addNumber("Lower Threshold Value for the IF mask:  ", 50);
 	Dialog.addMessage("\n");
 	Dialog.addNumber("G factor (1 if unknown):  ", 1);

@@ -19,28 +19,13 @@ rename(tif_name);
 // blue is 2
 
 // getting ch00
-ch = "ch00";
-ch_name = tif_name + "_" + ch;
-selectWindow(tif_name);
-run("Duplicate...", "title=["+ ch_name + "] duplicate channels=1");
-resetMinAndMax();
-saveAs("Tiff", split_folder + ch_name + ".tif");
+getAndSaveChannel(tif_name, "ch00", 1);
 
 // getting ch01
-ch = "ch01";
-ch_name = tif_name + "_" + ch;
-selectWindow(tif_name);
-run("Duplicate...", "title=["+ ch_name + "] duplicate channels=2");
-resetMinAndMax();
-saveAs("Tiff", split_folder + ch_name + ".tif");
+getAndSaveChannel(tif_name, "ch01", 2);
 
 // getting ch02
-ch = "ch02";
-ch_name = tif_name + "_" + ch;
-selectWindow(tif_name);
-run("Duplicate...", "title=["+ ch_name + "] duplicate channels=3");
-resetMinAndMax();
-saveAs("Tiff", split_folder + ch_name + ".tif");
+getAndSaveChannel(tif_name, "ch02", 3)
 
 // getting segmented image
 ch = "ch03";
@@ -52,3 +37,14 @@ setAutoThreshold("Otsu dark");
 setOption("BlackBackground", true);
 run("Convert to Mask");
 saveAs("Tiff", split_folder + ch_name + ".tif");
+
+function getAndSaveChannel(input_window, ch_name, ch_index) { 
+	// function description
+	ch_name = input_window + "_" + ch_name;
+	
+	selectWindow(input_window);
+	run("Duplicate...", "title=["+ ch_name + "] duplicate channels=" + ch_index);
+	resetMinAndMax();
+	saveAs("Tiff", split_folder + ch_name + ".tif");
+
+}
