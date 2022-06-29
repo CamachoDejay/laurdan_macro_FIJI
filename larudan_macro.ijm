@@ -191,7 +191,6 @@ if (List.get(chC) == "none") {
 	printInfo();
 }
 
-//TODO: finish this part
 
 // If there is fluorescent immunostaining
 else {
@@ -210,8 +209,11 @@ else {
 	listDir = getFileList(dir);
 	Name=newArray(listDir.length);
 	counter = 0;
+	
+	print(List.get(chC) + ".tif");
+
 	for (i = 0; i < listDir.length; i++) {
-		if (endsWith(listDir[i], chC + ".tif")) {
+		if (endsWith(listDir[i], List.get(chC) + ".tif")) {
 			open(dir + listDir[i]);
 			name = getTitle;
 			Name[i]=substring(name,0,lengthOf(name)-9);
@@ -230,8 +232,6 @@ else {
 	if (counter==0) {
 		exit("could not find IF images, check naming convention");
 	}
-	//TODO: finish this part
-	exit("here we go");
 
 // GP-IF image
 	listTempIF = getFileList(temp_IFmask_Dir);
@@ -240,17 +240,24 @@ else {
 	for (h = 0, j = h; h < listTempIF.length; h++, j++) {
 		open(temp_IFmask_Dir+listTempIF[h]);
 		k = getTitle;
+		setMinAndMax(0, 1);
+		run("glasbey_on_dark");
 		Name[j]=substring(k,0,lengthOf(k)-15);
-		open(GP_images_Dir + Name[j] + "_GP.tif");
+		open(List.get(GP_images_Dir) + Name[j] + "_GP.tif");
 		l = getTitle;
-		run("8-bit");
-		imageCalculator("Multiply create", k, l);
-		run(lut1);
-		saveAs("tiff", GP_IF_images_Dir + Name[j] + "_GP-IF");
+		
+		imageCalculator("Multiply create 32-bit", k, l);
+		run(List.get(lut1));
+		
+		
+		GP_image_post = Name[j] + "_GP-IF.tif";
+		saveAs("tiff", List.get(GP_IF_images_Dir) + GP_image_post);
+		
 
-// Histogram and Normal Distribution
-		histoDir=histogramIF_Dir;
-		HistogramGeneration();
+		// Histogram and Normal Distribution
+		histoDir=List.get(histogramIF_Dir);
+		HistogramGeneration(GP_image_post, histoDir);
+
 	}
 
 // Folder management
@@ -292,7 +299,8 @@ function getUserInput() {
 	Dialog.addNumber("Lower Threshold Value for GP the mask:  ", 15000);
 	Dialog.addChoice("Scale color for GP images:  ", lut, "Rainbow RGB.lut");
 	Dialog.addMessage("\n");
-	Dialog.addChoice("Immunofluorescence channel:  ", CHANNEL1, "none");
+	//Dialog.addChoice("Immunofluorescence channel:  ", CHANNEL1, "none");
+	Dialog.addChoice("Immunofluorescence channel:  ", CHANNEL1, "ch03");
 	Dialog.addNumber("Lower Threshold Value for the IF mask:  ", 50);
 	Dialog.addMessage("\n");
 	Dialog.addNumber("G factor (1 if unknown):  ", 1);
@@ -415,7 +423,7 @@ function image2gray32bit(im_title) {
 	return im_title;
 }
 
-function HistogramGeneration (im_title, histoDir) {
+function HistogramGeneration(im_title, histoDir) {
 // This funcion obtains the intensity frequency histogram of the images, makes it smoother,
 // calculates the normal average distribution and also includes the GP value (and GP value
 // corrected by the Gfactor) corresponding to each intensity. An MS Excel file is generated
@@ -462,6 +470,7 @@ function HistogramGeneration (im_title, histoDir) {
 	
 	Array.getStatistics(Cou,min,max,mean,stdDev);
 	Sa=(mean*256)-counts[0]-counts[255];
+	//print("histogram goes to: " + histoDir + tmp_name+"_Histogram.xls");
 	d=File.open(histoDir + tmp_name+"_Histogram.xls");
 	print(d, "Intensity	Counts	Smooth	Norm Av Dist	GP	GP corrected");
 	for (k=0; k<256; k++) {
@@ -469,6 +478,7 @@ function HistogramGeneration (im_title, histoDir) {
 		print(d, Int[k]+"	"+Cou[k]+"	"+Smo[k]+"	"+NAvDist[k]+"	"+GP_array[k]+"	"+GPc_array[k]);
 	}
 	File.close(d);
+
 }
 
 function HSBgeneration() {				
@@ -483,8 +493,6 @@ function HSBgeneration() {
 	BRIGHTNESSnoIF = newArray("Order channel","Disorder channel");
 	QUESTION = newArray("Yes","No");
 
-	//TODO: move this path to the list
-	//HSB_Dir = List.get(results_Dir) + "HSB images" + File.separator;
 	Folder = List.get(HSB_Dir);
 	newCleanFolder(Folder);
 
@@ -711,7 +719,7 @@ function printInfo() {					// This function prints and saves a summary of the re
 	print("Ordered channel: " + List.get(chA));
 	print("Disordered channel: " + List.get(chB));
 	print("   Lower threshold value: " + List.get(t));
-	if (chC != "none") {
+	if (List.get(chC) != "none") {
 		print("Channel IF: " + List.get(chC));
 		print("   Lower threshold value IF mask: " + List.get(tc)); }
 	print("");
